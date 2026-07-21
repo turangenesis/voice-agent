@@ -27,10 +27,18 @@ CHUNK_WORDS = int(os.getenv("CHUNK_WORDS", "800"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "100"))
 
 
-def extract_pages(pdf_path: str) -> list[str]:
-    """Return the text of each page (empty string for pages pypdf can't read)."""
-    reader = PdfReader(pdf_path)
-    return [(page.extract_text() or "").strip() for page in reader.pages]
+TEXT_SUFFIXES = {".md", ".markdown", ".txt", ".text"}
+
+
+def extract_pages(path: str) -> list[str]:
+    """Return text as a list of 'pages'. PDFs → one entry per page; text/MD → one entry."""
+    suffix = Path(path).suffix.lower()
+    if suffix == ".pdf":
+        reader = PdfReader(path)
+        return [(page.extract_text() or "").strip() for page in reader.pages]
+    if suffix in TEXT_SUFFIXES:
+        return [Path(path).read_text(encoding="utf-8", errors="replace").strip()]
+    raise SystemExit(f"✗ Unsupported file type '{suffix}'. Supported: .pdf, .md, .txt")
 
 
 def chunk_pages(source: str, pages: list[str]) -> list[dict]:
@@ -78,18 +86,18 @@ async def write_to_moss(index: str, chunks: list[dict]) -> None:
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description="Ingest a PDF into a Moss index.")
-    parser.add_argument("pdf_path", help="path to the PDF to ingest")
+    parser = argparse.ArgumentParser(description="Ingest a document (.pdf/.md/.txt) into a Moss index.")
+    parser.add_argument("doc_path", help="path to the document (.pdf, .md, or .txt)")
     parser.add_argument("--index", default=os.getenv("MOSS_INDEX", "docs"), help="Moss index name (default: docs)")
     args = parser.parse_args()
 
-    source = Path(args.pdf_path).stem
-    pages = extract_pages(args.pdf_path)
+    source = Path(args.doc_path).stem
+    pages = extract_pages(args.doc_path)
     total_chars = sum(len(p) for p in pages)
     if total_chars == 0:
         raise SystemExit(
-            f"✗ Extracted 0 characters from {args.pdf_path}. "
-            "Is it a scanned/image-only PDF? pypdf can't OCR — v1 needs a text PDF."
+            f"✗ Extracted 0 characters from {args.doc_path}. "
+            "If it's a scanned/image-only PDF, pypdf can't OCR it."
         )
 
     chunks = chunk_pages(source, pages)
