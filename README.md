@@ -99,12 +99,18 @@ Idle-but-open barely counts — only active conversation drains it.
 
 **Rule:** logic is a library, the CLI/API runs it, a UI is only a client that calls the API.
 
+**Agent track — how you reach it:**
+
 | Version | Adds | Trigger |
 |---|---|---|
 | v1 | scripts | `python script.py` |
 | **v2 (now)** | installable `voiceagent` command, `src/` package, multi-client, tests + eval, `ARCHITECTURE.md` | `voiceagent ingest` / `voiceagent talk` |
-| v3 | `api.py` (FastAPI) wrapping the same core; CI + Dockerfile | HTTP endpoint |
-| v4 | thin web UI (e.g. button in a hosted PDF) that calls the v3 API | click → talk (zero logic in UI) |
+| v3 | `api.py` (FastAPI) over the same core (`/ingest`, `/ask`); CI + Dockerfile | HTTP — reachable by any client |
+| v4 | web UI that calls the v3 API — drag-drop a doc, click to talk | click → talk (zero logic in UI) |
+
+**Ingestion track — what it knows** (all write to Moss; the agent never changes): PDF/MD/TXT (done)
+→ web scrapers → MCP/API connectors → live loops. The impressive/hackathon version = several live
+sources feeding one voice agent, with the v4 UI on top. See [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Reuse notes
 

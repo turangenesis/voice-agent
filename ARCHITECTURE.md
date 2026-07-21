@@ -51,6 +51,23 @@ Two ways to isolate clients — pick per situation:
 
 ## Roadmap
 
-- **v2 (this):** installable `voiceagent` command, `src/` package, multi-client, eval + tests, this doc.
-- **v3:** `api.py` (FastAPI) wrapping the same core; add CI + Dockerfile for deploy.
-- **v4:** a thin web UI (e.g. a button in a hosted PDF) that calls the v3 API — zero logic in the UI.
+Two independent tracks. The **agent track** deepens *how you reach it*; the **ingestion
+track** widens *what it knows*. They never touch each other — both meet only at Moss.
+
+### Agent track — how you reach it
+- **v2 (done):** installable `voiceagent` command, `src/` package, multi-client, eval + tests, this doc.
+- **v3 — API:** `api.py` (FastAPI) over the same core → `POST /ingest`, `POST /ask`.
+  **Goal / what you gain:** the agent becomes reachable by *any* client — a web page, a phone,
+  a client's own system — not just your terminal. This is the prerequisite for a UI and for
+  hosting it somewhere. Add CI + Dockerfile to deploy.
+- **v4 — UI:** a web page that *calls* the v3 API — drag-and-drop a doc (→ `/ingest`), click to
+  talk (→ `/ask`). **Zero logic in the UI.** This is the "show a client, no terminal needed" layer.
+
+### Ingestion track — what it knows (all write to Moss; the agent never changes)
+- PDF / MD / TXT — **done**
+- Web scrapers / crawlers (on-demand or continuous) → Moss
+- MCP / API connectors (pull from external systems) → Moss
+- Live loops (an agent that watches a source and keeps Moss fresh) → Moss
+
+The demo-impressive / hackathon version = several live ingestion sources feeding one voice agent,
+with the v4 UI on top. None of it requires changing `agent.py`.
