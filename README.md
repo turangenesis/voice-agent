@@ -7,26 +7,42 @@ The two sides are decoupled by design:
 - **`ingest.py`** — the *write* side. Anything can write to Moss (PDF now; scrape / MCP / live loop later).
 - **`voice_agent.py`** — the *read* side. It only ever reads Moss and decides what to retrieve. Swapping the ingestion source never touches it.
 
+## Credentials — 1Password (no plaintext secrets)
+
+Secrets live in 1Password's **`Dev`** vault (items `Moss`, `LiveKit`), never in files.
+`.env` holds only `op://` **references**, so it's committed on purpose. `op run`
+resolves them to real values in memory at runtime.
+
+One-time, get the LiveKit values and store them:
+
+```bash
+lk cloud auth                                  # free LiveKit account; prints URL + keys
+op item edit LiveKit --vault Dev \
+  url=wss://YOUR.livekit.cloud \
+  api_key=APIxxxx \
+  api_secret=xxxx
+```
+
+Moss is already stored. Reuse across projects: point any new `.env` at the same
+`op://Dev/...` paths — never copy a key again.
+
 ## Setup (once)
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-
-lk cloud auth          # free LiveKit account → paste LIVEKIT_URL/API_KEY/API_SECRET into .env
 ```
-
-`.env` already has the Moss keys. You only need to add the three LiveKit values.
 
 ## Use
 
+Every command runs through `op run`, which injects the secrets:
+
 ```bash
 source .venv/bin/activate
-set -a; source .env; set +a
 
-python3 ingest.py path/to/document.pdf      # PDF → chunks → Moss 'docs' index
-python3 voice_agent.py console              # talk to it; ask about the document
+op run --env-file=.env -- python3 ingest.py path/to/document.pdf   # PDF → Moss 'docs'
+op run --env-file=.env -- python3 voice_agent.py console           # talk to it
 ```
 
 Ask something in the PDF → it answers from the content. Ask something not in it →

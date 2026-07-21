@@ -1,4 +1,7 @@
-.env
+# .env is committed on purpose — it holds only op:// references, no secrets.
+# Any file with REAL secrets stays out:
+.env.local
+*.secret
 .venv/
 __pycache__/
 *.pyc
