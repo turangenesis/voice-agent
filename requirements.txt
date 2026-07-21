@@ -1,0 +1,5 @@
+livekit==1.1.13
+livekit-agents==1.6.6
+livekit-plugins-silero==1.6.6
+moss==1.7.1
+pypdf==5.1.0
