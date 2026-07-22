@@ -13,13 +13,20 @@ dependencies = [
     "livekit-plugins-silero==1.6.6",
     "moss==1.7.1",
     "pypdf==5.1.0",
+    "fastapi==0.115.6",
+    "uvicorn==0.34.0",
+    "python-multipart==0.0.20",
 ]
 
-# This is the line that turns the project into a real installed command:
-#   `voiceagent ingest ...` / `voiceagent talk` become runnable from any terminal
-# after `pip install -e .` — no more `python3 some_script.py`.
+[project.optional-dependencies]
+test = ["httpx==0.28.1"]
+
+# These turn the project into real installed commands after `pip install -e .`:
+#   voiceagent      -> CLI (ingest / talk)
+#   voiceagent-api  -> HTTP API server (v3)
 [project.scripts]
 voiceagent = "voiceagent.cli:main"
+voiceagent-api = "voiceagent.api:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

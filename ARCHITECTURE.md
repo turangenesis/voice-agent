@@ -9,8 +9,9 @@ Nothing above the core talks to Moss or LiveKit directly.
 
 ```
                         ┌─────────────────────────────────────────┐
-INTERFACE               │  cli.py   →  `voiceagent ingest / talk`  │
-(how you run it)        └──────────────────┬──────────────────────┘
+INTERFACE               │  cli.py  → `voiceagent ingest / talk`     │
+(how you run it)        │  api.py  → HTTP: /health /ingest /ask ... │
+                        └──────────────────┬──────────────────────┘
                                            │
 OPERATIONS              ┌──────────────────┴──────────────────────┐
 (the two things it does)│  ingest.py (write)     agent.py (read)   │
@@ -29,6 +30,7 @@ EXTERNAL                        Moss (retrieval)   LiveKit (voice)
 - **`ingest.py`** — document → chunks → `moss_store.write_docs`.
 - **`agent.py`** — LiveKit agent; its tools call `moss_store.retrieve_texts` / `describe`.
 - **`cli.py`** — the `voiceagent` command; thin, just parses args and calls the above.
+- **`api.py`** — the `voiceagent-api` HTTP server (FastAPI); thin, each endpoint calls the core. Holds no logic.
 - **`eval.py`** — retrieval eval scaffold; scores an ingested index against known Q/expected pairs.
 
 ## Ingestion ⟂ retrieval (decoupled on purpose)
@@ -56,10 +58,11 @@ track** widens *what it knows*. They never touch each other — both meet only a
 
 ### Agent track — how you reach it
 - **v2 (done):** installable `voiceagent` command, `src/` package, multi-client, eval + tests, this doc.
-- **v3 — API:** `api.py` (FastAPI) over the same core → `POST /ingest`, `POST /ask`.
-  **Goal / what you gain:** the agent becomes reachable by *any* client — a web page, a phone,
-  a client's own system — not just your terminal. This is the prerequisite for a UI and for
-  hosting it somewhere. Add CI + Dockerfile to deploy.
+- **v3 — API (Path A done):** `api.py` (FastAPI) over the same core → `GET /health`, `POST /ingest`,
+  `POST /ask`, `GET /describe`, served by `voiceagent-api`. **Goal / what you gain:** the agent is
+  now reachable by *any* client — a web page, a phone, a client's own system — not just the terminal.
+  Path A `/ask` returns retrieved chunks. **Path B (next):** `/ask` composes a natural-language answer
+  via Claude (needs an Anthropic API key in the `Dev` vault), plus CI + Dockerfile to deploy.
 - **v4 — UI:** a web page that *calls* the v3 API — drag-and-drop a doc (→ `/ingest`), click to
   talk (→ `/ask`). **Zero logic in the UI.** This is the "show a client, no terminal needed" layer.
 

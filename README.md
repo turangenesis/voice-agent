@@ -66,6 +66,33 @@ Each agent instance only ever sees its scope — verified: another client's data
 
 ---
 
+## HTTP API (v3) — reachable by any client
+
+The same core, exposed over HTTP so a web page / phone / another service can call it
+(not just the terminal). Start it:
+
+```bash
+op run --env-file=.env -- voiceagent-api        # serves on http://127.0.0.1:8000
+```
+
+```bash
+curl localhost:8000/health
+# {"ok": true}
+
+curl -F file=@document.pdf -F index=docs localhost:8000/ingest
+# {"chunks": 42, "source": "document", "index": "docs", "client": null}
+
+curl -X POST localhost:8000/ask -H 'content-type: application/json' \
+  -d '{"question": "What is the refund window?", "index": "docs"}'
+# {"question": "...", "chunks": ["...relevant text..."], "answer": null}
+
+curl 'localhost:8000/describe?index=docs'
+```
+
+`/ask` currently returns the retrieved chunks (**Path A**). Composing a natural-language
+answer with an LLM (**Path B**) is a small follow-up that needs an Anthropic API key.
+Interactive docs at `http://127.0.0.1:8000/docs` when the server is running.
+
 ## Tests & eval
 
 ```bash
@@ -105,7 +132,8 @@ Idle-but-open barely counts — only active conversation drains it.
 |---|---|---|
 | v1 | scripts | `python script.py` |
 | **v2 (now)** | installable `voiceagent` command, `src/` package, multi-client, tests + eval, `ARCHITECTURE.md` | `voiceagent ingest` / `voiceagent talk` |
-| v3 | `api.py` (FastAPI) over the same core (`/ingest`, `/ask`); CI + Dockerfile | HTTP — reachable by any client |
+| **v3 (now, Path A)** | `api.py` (FastAPI) over the same core: `/health`, `/ingest`, `/ask`, `/describe` | `voiceagent-api` → HTTP, any client |
+| v3 Path B | `/ask` composes an answer via Claude (needs Anthropic API key); CI + Dockerfile | HTTP — real answers |
 | v4 | web UI that calls the v3 API — drag-drop a doc, click to talk | click → talk (zero logic in UI) |
 
 **Ingestion track — what it knows** (all write to Moss; the agent never changes): PDF/MD/TXT (done)
