@@ -9,8 +9,21 @@ import os
 from moss import DocumentInfo, MossClient, MutationOptions, QueryOptions
 
 
+_CLIENT: MossClient | None = None
+_LOADED: set[str] = set()  # indexes already loaded into this process (avoid reloading per query)
+
+
 def _client() -> MossClient:
-    return MossClient(os.environ["MOSS_PROJECT_ID"], os.environ["MOSS_PROJECT_KEY"])
+    global _CLIENT
+    if _CLIENT is None:
+        _CLIENT = MossClient(os.environ["MOSS_PROJECT_ID"], os.environ["MOSS_PROJECT_KEY"])
+    return _CLIENT
+
+
+async def _ensure_loaded(client: MossClient, index: str) -> None:
+    if index not in _LOADED:
+        await client.load_index(index)  # once per index per process, not once per query
+        _LOADED.add(index)
 
 
 def _client_filter(client_id: str | None) -> dict | None:
@@ -28,13 +41,23 @@ async def write_docs(index: str, docs: list[DocumentInfo], model_id: str) -> Non
         await client.add_docs(index, docs, MutationOptions(upsert=True))
     else:
         await client.create_index(index, docs, model_id)
+    _LOADED.discard(index)  # data changed -> reload on next query so results are fresh
+
+
+async def delete_index(index: str) -> None:
+    """Drop an index (used by the benchmark cleanup). Silent if it doesn't exist."""
+    try:
+        await _client().delete_index(index)
+        _LOADED.discard(index)
+    except Exception:
+        pass
 
 
 async def query_docs(index: str, question: str, top_k: int = 5, client_id: str | None = None) -> list:
     """Return raw matching docs. load_index first so metadata filtering runs in-memory."""
     client = _client()
     try:
-        await client.load_index(index)  # loaded -> QueryOptions(filter=...) is honored
+        await _ensure_loaded(client, index)  # loaded -> QueryOptions(filter=...) is honored, and fast
         options = QueryOptions(top_k=top_k, filter=_client_filter(client_id))
         result = await client.query(index, question, options)
     except Exception:

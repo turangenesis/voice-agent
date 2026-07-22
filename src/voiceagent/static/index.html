@@ -23,6 +23,8 @@
   label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
   input[type=text] { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--edge);
                      background:var(--bg); color:var(--text); font-size:14px; }
+  select { flex:1; min-width:0; padding:9px 10px; border-radius:8px; border:1px solid var(--edge);
+           background:var(--bg); color:var(--text); font-size:13px; }
   .drop { border:1.5px dashed var(--edge); border-radius:10px; padding:22px; text-align:center; color:var(--muted);
           cursor:pointer; transition:.15s; }
   .drop:hover, .drop.over { border-color:var(--accent); color:var(--text); }
@@ -71,6 +73,11 @@
       <button id="askBtn" onclick="ask()">Ask</button>
     </div>
     <div class="flag" id="voiceFlag"></div>
+    <div class="row" style="margin-top:10px; align-items:center; gap:8px;">
+      <label style="margin:0;">Voice</label>
+      <select id="voiceSel"></select>
+      <button class="mic" onclick="stopSpeaking()" title="Stop the spoken answer">⏹ Stop</button>
+    </div>
     <div id="result" style="margin-top:16px;"></div>
   </div>
 </div>
@@ -121,10 +128,25 @@ function talk() {
   rec.onend = () => mic.classList.remove('on');
   rec.start();
 }
+let voices = [];
+function loadVoices() {
+  if (!window.speechSynthesis) return;
+  voices = window.speechSynthesis.getVoices();
+  const sel = $('voiceSel'); if (!sel) return;
+  const keep = sel.value;
+  sel.innerHTML = voices.length
+    ? voices.map((v, i) => `<option value="${i}">${v.name} (${v.lang})</option>`).join('')
+    : '<option>(browser default)</option>';
+  if (keep) sel.value = keep;
+}
+if (window.speechSynthesis) { loadVoices(); window.speechSynthesis.onvoiceschanged = loadVoices; }
+function stopSpeaking() { if (window.speechSynthesis) window.speechSynthesis.cancel(); }
 function speak(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text); u.rate = 1.03;
+  const i = $('voiceSel') && $('voiceSel').value;
+  if (voices[i]) u.voice = voices[i];
   window.speechSynthesis.speak(u);
 }
 
@@ -142,9 +164,10 @@ async function ask() {
     if (!r.ok) throw new Error(j.detail || 'ask failed');
     const chunks = j.chunks || [];
     let html = '';
-    if (j.answer) html += `<div class="answer">${escapeHtml(j.answer)}</div>`;
+    if (j.answer) html += `<div class="answer">${escapeHtml(j.answer)}</div>
+        <div class="flag ok">🧠 answered by Claude${j.model ? ' · ' + escapeHtml(j.model) : ''}</div>`;
     else if (chunks.length) html += `<div class="answer">${escapeHtml(chunks[0])}</div>
-        <div class="flag">No Anthropic key set — showing the top retrieved passage. Add a key to get a written answer.</div>`;
+        <div class="flag">📄 retrieved from Moss (no LLM answer — add an Anthropic key for a written answer)</div>`;
     else html += `<div class="answer">The document doesn't seem to cover that.</div>`;
     if (chunks.length) {
       html += `<div class="sources"><details><summary>Sources (${chunks.length} passage${chunks.length>1?'s':''})</summary>`

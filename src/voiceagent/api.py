@@ -72,13 +72,14 @@ async def ask(req: AskRequest) -> dict:
     to 1Password, the same endpoint starts returning a Claude-written answer (Path B).
     """
     chunks = await moss_store.retrieve_texts(req.index, req.question, req.top_k, req.client)
-    answer = None
+    answer, source, model = None, ("retrieval" if chunks else "none"), None
     if chunks and config.has_anthropic_key():
         try:
             answer = await _compose_answer(req.question, chunks)
+            source, model = "claude", config.ANTHROPIC_MODEL
         except Exception:
             answer = None  # LLM unavailable -> degrade to chunks, never 500
-    return {"question": req.question, "chunks": chunks, "answer": answer}
+    return {"question": req.question, "chunks": chunks, "answer": answer, "source": source, "model": model}
 
 
 @app.get("/describe")

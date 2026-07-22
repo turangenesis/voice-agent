@@ -92,10 +92,12 @@ more layers, it's:
 1. **One real integration + one sharp use case.** e.g. Bright Data live-scrapes a real source → Moss,
    and the agent answers about *live* data. Pick ONE concrete story ("voice agent over a client's
    live knowledge base"), not ten half-features.
-2. **An evaluation + grading harness.** The impressive part is *measuring* the agent: a test set of
-   question→expected-answer, scored automatically, so you can say "accuracy is X%, and here's how I
-   improved it." `eval.py` is the seed. This is what separates "I wired an API" from "I built and
-   *measured* a system." **This is the differentiator — invest here, not in more UI.**
+2. **An evaluation + grading harness — ADOPT, never build from scratch.** The impressive part is
+   *measuring* the agent: question→expected-answer scored automatically, so you can say "accuracy is
+   X%, here's the failure mode I fixed." **Adopt an industry-standard tool** — `promptfoo` (YAML,
+   config-driven, great for answer eval), `ragas` (RAG metrics: faithfulness, context precision/recall),
+   or `deepeval`. Our `eval.py` is only a stopgap seed; replace it with a real tool, don't grow it.
+   This is what separates "I wired an API" from "I built and *measured* a system." **Invest here, not in more UI.**
 
 Diminishing returns (nice, not hireable): more UI polish, more endpoints, more layers.
 
@@ -111,5 +113,11 @@ Diminishing returns (nice, not hireable): more UI polish, more endpoints, more l
    the agent execute end-to-end (plan → build all layers → test), instead of gating every step. Biggest lever.
 2. **Permission allowlist** in `.claude/settings.json` so routine commands don't prompt. (Ask to set up.)
 3. **Reuse this template** — next project starts at v4, not v0.
-4. **Loop engineering** — for iterative refinement: state goal + criteria, let it iterate to the bar.
+4. **Loop engineering — ADOPT ready-made, never build a loop framework.** For "state goal + definition
+   of done → iterate to the bar" work, adopt existing tooling (Claude Code's `/loop` + Workflow,
+   the Claude Agent SDK, or LangGraph for agent loops) — don't hand-roll an orchestration layer.
+   Deep-dive owed. See memory `leverage-spec-upfront-not-step-by-step`.
 5. **Bake the layering into `engineering-kit`** so core→interface→UI is never re-taught per project.
+
+> Standing rule (Emre's day-one hard rule): **adopt proven tools, connect APIs — do NOT build eval
+> harnesses or loop/agent frameworks from scratch.** Building = thin glue over adopted tools.
