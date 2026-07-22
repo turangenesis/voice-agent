@@ -31,3 +31,6 @@ voiceagent-api = "voiceagent.api:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+voiceagent = ["static/*.html"]

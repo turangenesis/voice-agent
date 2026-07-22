@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>voice-agent — ask your document</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --edge: #262b36; --text: #e6e8ec;
+    --muted: #9aa3b2; --accent: #5b8cff; --accent-2: #3a63c0; --ok: #3fb950;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f6f7f9; --panel:#fff; --edge:#e3e6ea; --text:#1b1f27; --muted:#606a7b; --accent:#2f6bff; --accent-2:#2450c8; --ok:#1a7f37; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--text); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 13px; }
+  .panel { background:var(--panel); border:1px solid var(--edge); border-radius:12px; padding:18px; margin-bottom:18px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
+  input[type=text] { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--edge);
+                     background:var(--bg); color:var(--text); font-size:14px; }
+  .drop { border:1.5px dashed var(--edge); border-radius:10px; padding:22px; text-align:center; color:var(--muted);
+          cursor:pointer; transition:.15s; }
+  .drop:hover, .drop.over { border-color:var(--accent); color:var(--text); }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:10px 16px; font-size:14px;
+           font-weight:600; cursor:pointer; }
+  button:hover { background:var(--accent-2); }
+  button:disabled { opacity:.5; cursor:default; }
+  .flag { font-size:12px; color:var(--muted); margin-top:8px; }
+  .flag.ok { color:var(--ok); }
+  .answer { font-size:16px; line-height:1.6; white-space:pre-wrap; }
+  .sources { margin-top:14px; }
+  details summary { cursor:pointer; color:var(--muted); font-size:13px; }
+  .chunk { font-size:13px; color:var(--muted); border-left:2px solid var(--edge); padding:6px 10px; margin:8px 0; white-space:pre-wrap; }
+  .field { flex:1; min-width:120px; }
+  .spin { display:inline-block; width:13px; height:13px; border:2px solid var(--muted); border-top-color:transparent;
+          border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ask your document</h1>
+  <p class="sub">Drop a PDF, Markdown, or text file → then ask questions about it. This page only calls the API — no logic lives here.</p>
+
+  <div class="panel">
+    <div class="row" style="margin-bottom:12px;">
+      <div class="field"><label>Index</label><input id="index" type="text" value="docs" /></div>
+      <div class="field"><label>Client (optional)</label><input id="client" type="text" placeholder="e.g. acme" /></div>
+    </div>
+    <div class="drop" id="drop">
+      <strong>Drop a file here</strong> or click to choose &nbsp;·&nbsp; .pdf .md .txt
+      <input id="file" type="file" accept=".pdf,.md,.markdown,.txt,.text" hidden />
+    </div>
+    <div class="flag" id="ingestFlag"></div>
+  </div>
+
+  <div class="panel">
+    <label>Your question</label>
+    <div class="row">
+      <input id="q" type="text" placeholder="What is the refund window?" style="flex:1;"
+             onkeydown="if(event.key==='Enter')ask()" />
+      <button id="askBtn" onclick="ask()">Ask</button>
+    </div>
+    <div id="result" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const idx = () => $('index').value.trim() || 'docs';
+const cli = () => $('client').value.trim();
+
+// ---- ingest ----
+const drop = $('drop'), file = $('file');
+drop.onclick = () => file.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]); };
+file.onchange = () => { if (file.files[0]) upload(file.files[0]); };
+
+async function upload(f) {
+  const flag = $('ingestFlag');
+  flag.className = 'flag'; flag.innerHTML = `<span class="spin"></span> ingesting <b>${f.name}</b>…`;
+  const fd = new FormData();
+  fd.append('file', f); fd.append('index', idx());
+  if (cli()) fd.append('client', cli());
+  try {
+    const r = await fetch('/ingest', { method: 'POST', body: fd });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || 'ingest failed');
+    flag.className = 'flag ok';
+    flag.textContent = `✓ ingested ${j.chunks} chunk(s) from "${j.source}" into "${j.index}"${j.client ? ' for ' + j.client : ''}`;
+  } catch (e) { flag.className = 'flag'; flag.textContent = '✗ ' + e.message; }
+}
+
+// ---- ask ----
+async function ask() {
+  const q = $('q').value.trim(); if (!q) return;
+  const btn = $('askBtn'), out = $('result');
+  btn.disabled = true; out.innerHTML = '<span class="spin"></span> thinking…';
+  try {
+    const r = await fetch('/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ question: q, index: idx(), client: cli() || null })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || 'ask failed');
+    const chunks = j.chunks || [];
+    let html = '';
+    if (j.answer) html += `<div class="answer">${escapeHtml(j.answer)}</div>`;
+    else if (chunks.length) html += `<div class="answer">${escapeHtml(chunks[0])}</div>
+        <div class="flag">No Anthropic key set — showing the top retrieved passage. Add a key to get a written answer.</div>`;
+    else html += `<div class="answer">The document doesn't seem to cover that.</div>`;
+    if (chunks.length) {
+      html += `<div class="sources"><details><summary>Sources (${chunks.length} passage${chunks.length>1?'s':''})</summary>`
+            + chunks.map(c => `<div class="chunk">${escapeHtml(c)}</div>`).join('') + `</details></div>`;
+    }
+    out.innerHTML = html;
+  } catch (e) { out.innerHTML = '<div class="flag">✗ ' + escapeHtml(e.message) + '</div>'; }
+  finally { btn.disabled = false; }
+}
+
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+</body>
+</html>

@@ -15,10 +15,18 @@ def test_health():
 
 def test_routes_registered():
     paths = {route.path for route in app.routes}
-    assert {"/health", "/ask", "/describe", "/ingest"} <= paths
+    assert {"/", "/health", "/ask", "/describe", "/ingest"} <= paths
+
+
+def test_ui_served():
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    assert "Ask your document" in r.text  # the UI page rendered
 
 
 if __name__ == "__main__":
     test_health()
     test_routes_registered()
-    print("✓ api wiring tests passed")
+    test_ui_served()
+    print("✓ api + ui wiring tests passed")

@@ -17,11 +17,20 @@ import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from . import config, ingest, moss_store
 
-app = FastAPI(title="voiceagent", version="0.3.0")
+app = FastAPI(title="voiceagent", version="0.4.0")
+
+_INDEX_HTML = Path(__file__).parent / "static" / "index.html"
+
+
+@app.get("/", response_class=HTMLResponse)
+async def home() -> str:
+    """v4 — the web UI. A pure client: it only calls /ingest and /ask. No logic here."""
+    return _INDEX_HTML.read_text(encoding="utf-8")
 
 
 async def _compose_answer(question: str, chunks: list[str]) -> str:

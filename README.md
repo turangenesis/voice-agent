@@ -75,6 +75,10 @@ The same core, exposed over HTTP so a web page / phone / another service can cal
 op run --env-file=.env -- voiceagent-api        # serves on http://127.0.0.1:8000
 ```
 
+Open **http://127.0.0.1:8000** in a browser for the **web UI (v4)** — drag a file in, ask
+questions, read answers. The page is a *pure client*: it only calls `/ingest` and `/ask`,
+holds zero logic. The raw endpoints:
+
 ```bash
 curl localhost:8000/health
 # {"ok": true}
@@ -138,9 +142,10 @@ Idle-but-open barely counts — only active conversation drains it.
 |---|---|---|
 | v1 | scripts | `python script.py` |
 | **v2 (now)** | installable `voiceagent` command, `src/` package, multi-client, tests + eval, `ARCHITECTURE.md` | `voiceagent ingest` / `voiceagent talk` |
-| **v3 (now)** | `api.py` (FastAPI): `/health`, `/ingest`, `/ask`, `/describe`; `/ask` composes a Claude answer when a key is set (Path B) | `voiceagent-api` → HTTP, any client |
-| v4 | web UI that calls the v3 API — drag-drop a doc, click to talk | click → talk (zero logic in UI) |
+| v3 | `api.py` (FastAPI): `/health`, `/ingest`, `/ask`, `/describe`; `/ask` composes a Claude answer when a key is set | `voiceagent-api` → HTTP, any client |
+| **v4 (now)** | web UI at `/` — drag-drop a doc, ask questions; pure client, calls `/ingest` + `/ask` | open `localhost:8000` |
 | deploy | CI + Dockerfile | host it |
+| voice UI | browser voice (LiveKit token endpoint) | talk in browser |
 
 **Ingestion track — what it knows** (all write to Moss; the agent never changes): PDF/MD/TXT (done)
 → web scrapers → MCP/API connectors → live loops. The impressive/hackathon version = several live

@@ -8,7 +8,11 @@ Nothing above the core talks to Moss or LiveKit directly.
 ## Layers
 
 ```
-                        ┌─────────────────────────────────────────┐
+PRESENTATION            ┌─────────────────────────────────────────┐
+(client, no logic)      │  static/index.html → drag-drop + ask      │  ← v4: only calls the API
+                        └──────────────────┬──────────────────────┘
+                                           │ fetch /ingest, /ask
+                        ┌──────────────────┴──────────────────────┐
 INTERFACE               │  cli.py  → `voiceagent ingest / talk`     │
 (how you run it)        │  api.py  → HTTP: /health /ingest /ask ... │
                         └──────────────────┬──────────────────────┘
@@ -30,7 +34,8 @@ EXTERNAL                        Moss (retrieval)   LiveKit (voice)
 - **`ingest.py`** — document → chunks → `moss_store.write_docs`.
 - **`agent.py`** — LiveKit agent; its tools call `moss_store.retrieve_texts` / `describe`.
 - **`cli.py`** — the `voiceagent` command; thin, just parses args and calls the above.
-- **`api.py`** — the `voiceagent-api` HTTP server (FastAPI); thin, each endpoint calls the core. Holds no logic.
+- **`api.py`** — the `voiceagent-api` HTTP server (FastAPI); thin, each endpoint calls the core. Holds no logic. Also serves the UI at `/`.
+- **`static/index.html`** — the v4 web UI. A pure client: `fetch('/ingest')` + `fetch('/ask')`, zero business logic. Proof of the rule.
 - **`eval.py`** — retrieval eval scaffold; scores an ingested index against known Q/expected pairs.
 
 ## Ingestion ⟂ retrieval (decoupled on purpose)
@@ -65,8 +70,10 @@ track** widens *what it knows*. They never touch each other — both meet only a
   (Path B, `claude-haiku-4-5` by default, gated on `config.has_anthropic_key()` — degrades to chunks
   otherwise). This is the *text* door only; voice composes answers via LiveKit's own LLM. **Next:**
   CI + Dockerfile to deploy.
-- **v4 — UI:** a web page that *calls* the v3 API — drag-and-drop a doc (→ `/ingest`), click to
-  talk (→ `/ask`). **Zero logic in the UI.** This is the "show a client, no terminal needed" layer.
+- **v4 — UI (done):** `static/index.html`, served at `/`, that *calls* the v3 API — drag-and-drop a
+  doc (→ `/ingest`), ask questions (→ `/ask`). **Zero logic in the UI.** This is the "show a client,
+  no terminal needed" layer. **Next:** a browser *voice* UI (LiveKit token endpoint) as an alternative
+  front door, and CI + Dockerfile to host it.
 
 ### Ingestion track — what it knows (all write to Moss; the agent never changes)
 - PDF / MD / TXT — **done**
