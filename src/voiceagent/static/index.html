@@ -30,6 +30,9 @@
            font-weight:600; cursor:pointer; }
   button:hover { background:var(--accent-2); }
   button:disabled { opacity:.5; cursor:default; }
+  button.mic { background:var(--panel); color:var(--text); border:1px solid var(--edge); font-size:17px; padding:10px 13px; }
+  button.mic:hover { border-color:var(--accent); background:var(--panel); }
+  button.mic.on { background:#c0392b; color:#fff; border-color:#c0392b; }
   .flag { font-size:12px; color:var(--muted); margin-top:8px; }
   .flag.ok { color:var(--ok); }
   .answer { font-size:16px; line-height:1.6; white-space:pre-wrap; }
@@ -45,7 +48,7 @@
 <body>
 <div class="wrap">
   <h1>Ask your document</h1>
-  <p class="sub">Drop a PDF, Markdown, or text file → then ask questions about it. This page only calls the API — no logic lives here.</p>
+  <p class="sub">Drop a PDF, Markdown, or text file → then <b>type or talk</b> to ask about it. Answers come from Claude. This page only calls the API — no logic lives here.</p>
 
   <div class="panel">
     <div class="row" style="margin-bottom:12px;">
@@ -60,12 +63,14 @@
   </div>
 
   <div class="panel">
-    <label>Your question</label>
+    <label>Your question — type it, or click 🎤 and speak</label>
     <div class="row">
       <input id="q" type="text" placeholder="What is the refund window?" style="flex:1;"
              onkeydown="if(event.key==='Enter')ask()" />
+      <button id="micBtn" class="mic" onclick="talk()" title="Ask by voice">🎤</button>
       <button id="askBtn" onclick="ask()">Ask</button>
     </div>
+    <div class="flag" id="voiceFlag"></div>
     <div id="result" style="margin-top:16px;"></div>
   </div>
 </div>
@@ -98,6 +103,31 @@ async function upload(f) {
   } catch (e) { flag.className = 'flag'; flag.textContent = '✗ ' + e.message; }
 }
 
+// ---- voice: browser speech-to-text -> same /ask (Claude) -> speak the answer ----
+let speakBack = false;
+function talk() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const flag = $('voiceFlag'), mic = $('micBtn');
+  if (!SR) { flag.className='flag'; flag.textContent = 'Voice input needs Chrome/Edge (this browser has no Web Speech API). Typing still works.'; return; }
+  const rec = new SR();
+  rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
+  mic.classList.add('on'); flag.className='flag'; flag.innerHTML = '<span class="spin"></span> listening… speak now';
+  rec.onresult = e => {
+    const text = e.results[0][0].transcript;
+    $('q').value = text; flag.textContent = 'heard: "' + text + '"';
+    speakBack = true; ask();
+  };
+  rec.onerror = e => { flag.textContent = 'voice error: ' + e.error + ' (typing still works)'; };
+  rec.onend = () => mic.classList.remove('on');
+  rec.start();
+}
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text); u.rate = 1.03;
+  window.speechSynthesis.speak(u);
+}
+
 // ---- ask ----
 async function ask() {
   const q = $('q').value.trim(); if (!q) return;
@@ -121,7 +151,8 @@ async function ask() {
             + chunks.map(c => `<div class="chunk">${escapeHtml(c)}</div>`).join('') + `</details></div>`;
     }
     out.innerHTML = html;
-  } catch (e) { out.innerHTML = '<div class="flag">✗ ' + escapeHtml(e.message) + '</div>'; }
+    if (speakBack) { speak(j.answer || chunks[0] || "The document doesn't cover that."); speakBack = false; }
+  } catch (e) { out.innerHTML = '<div class="flag">✗ ' + escapeHtml(e.message) + '</div>'; speakBack = false; }
   finally { btn.disabled = false; }
 }
 

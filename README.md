@@ -75,9 +75,11 @@ The same core, exposed over HTTP so a web page / phone / another service can cal
 op run --env-file=.env -- voiceagent-api        # serves on http://127.0.0.1:8000
 ```
 
-Open **http://127.0.0.1:8000** in a browser for the **web UI (v4)** — drag a file in, ask
-questions, read answers. The page is a *pure client*: it only calls `/ingest` and `/ask`,
-holds zero logic. The raw endpoints:
+Open **http://127.0.0.1:8000** in a browser for the **web UI (v4)** — drag a file in, then
+**type or click 🎤 and talk**. The browser does speech-to-text and speak-back (Web Speech API,
+Chrome/Edge); the answer comes from the same `/ask` → **Claude** path. So the whole web page —
+text and voice — uses Claude. (The terminal `voiceagent talk` is the separate LiveKit voice path.)
+The page is a *pure client*: it only calls `/ingest` and `/ask`, holds zero logic. Raw endpoints:
 
 ```bash
 curl localhost:8000/health
