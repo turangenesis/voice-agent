@@ -19,9 +19,28 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, UploadFile
 from pydantic import BaseModel
 
-from . import ingest, moss_store
+from . import config, ingest, moss_store
 
 app = FastAPI(title="voiceagent", version="0.3.0")
+
+
+async def _compose_answer(question: str, chunks: list[str]) -> str:
+    """v3 Path B — turn retrieved chunks into a written answer via Claude (cheapest model)."""
+    from anthropic import AsyncAnthropic
+
+    client = AsyncAnthropic()  # reads ANTHROPIC_API_KEY from the environment
+    context = "\n\n".join(chunks)
+    message = await client.messages.create(
+        model=config.ANTHROPIC_MODEL,
+        max_tokens=1024,
+        system=(
+            "Answer the user's question using ONLY the provided document excerpts. "
+            "If the excerpts don't contain the answer, say so plainly — never make anything up. "
+            "Keep the answer concise."
+        ),
+        messages=[{"role": "user", "content": f"Document excerpts:\n{context}\n\nQuestion: {question}"}],
+    )
+    return "".join(block.text for block in message.content if block.type == "text")
 
 
 @app.get("/health")
@@ -38,9 +57,19 @@ class AskRequest(BaseModel):
 
 @app.post("/ask")
 async def ask(req: AskRequest) -> dict:
-    """v3 Path A — return the retrieved chunks (no LLM). `answer` is reserved for Path B."""
+    """Retrieve chunks, and (if an Anthropic key is set) compose a written answer.
+
+    No key yet -> returns chunks with answer=null (Path A). Once the key is added
+    to 1Password, the same endpoint starts returning a Claude-written answer (Path B).
+    """
     chunks = await moss_store.retrieve_texts(req.index, req.question, req.top_k, req.client)
-    return {"question": req.question, "chunks": chunks, "answer": None}
+    answer = None
+    if chunks and config.has_anthropic_key():
+        try:
+            answer = await _compose_answer(req.question, chunks)
+        except Exception:
+            answer = None  # LLM unavailable -> degrade to chunks, never 500
+    return {"question": req.question, "chunks": chunks, "answer": answer}
 
 
 @app.get("/describe")

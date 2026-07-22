@@ -58,11 +58,13 @@ track** widens *what it knows*. They never touch each other — both meet only a
 
 ### Agent track — how you reach it
 - **v2 (done):** installable `voiceagent` command, `src/` package, multi-client, eval + tests, this doc.
-- **v3 — API (Path A done):** `api.py` (FastAPI) over the same core → `GET /health`, `POST /ingest`,
+- **v3 — API (done):** `api.py` (FastAPI) over the same core → `GET /health`, `POST /ingest`,
   `POST /ask`, `GET /describe`, served by `voiceagent-api`. **Goal / what you gain:** the agent is
   now reachable by *any* client — a web page, a phone, a client's own system — not just the terminal.
-  Path A `/ask` returns retrieved chunks. **Path B (next):** `/ask` composes a natural-language answer
-  via Claude (needs an Anthropic API key in the `Dev` vault), plus CI + Dockerfile to deploy.
+  `/ask` returns retrieved chunks and, when an Anthropic key is present, a Claude-composed answer
+  (Path B, `claude-haiku-4-5` by default, gated on `config.has_anthropic_key()` — degrades to chunks
+  otherwise). This is the *text* door only; voice composes answers via LiveKit's own LLM. **Next:**
+  CI + Dockerfile to deploy.
 - **v4 — UI:** a web page that *calls* the v3 API — drag-and-drop a doc (→ `/ingest`), click to
   talk (→ `/ask`). **Zero logic in the UI.** This is the "show a client, no terminal needed" layer.
 

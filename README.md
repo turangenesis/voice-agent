@@ -89,9 +89,15 @@ curl -X POST localhost:8000/ask -H 'content-type: application/json' \
 curl 'localhost:8000/describe?index=docs'
 ```
 
-`/ask` currently returns the retrieved chunks (**Path A**). Composing a natural-language
-answer with an LLM (**Path B**) is a small follow-up that needs an Anthropic API key.
-Interactive docs at `http://127.0.0.1:8000/docs` when the server is running.
+`/ask` returns retrieved chunks and, **once an Anthropic key is set**, also a Claude-written
+`answer` (v3 Path B — cheapest model, `claude-haiku-4-5`, ~fractions of a cent per question).
+No key → `answer` is `null` and you still get the chunks; it never errors. The voice agent
+does **not** use this — it has its own LLM via LiveKit. Interactive docs at `/docs` when running.
+
+**To enable answers:** get a key at console.anthropic.com → open the `Anthropic` item in the
+1Password `Dev` vault → paste it into `api_key`. Or:
+`op item edit Anthropic --vault Dev api_key=sk-ant-...`. Change the model any time via
+`ANTHROPIC_MODEL` in `.env`.
 
 ## Tests & eval
 
@@ -132,9 +138,9 @@ Idle-but-open barely counts — only active conversation drains it.
 |---|---|---|
 | v1 | scripts | `python script.py` |
 | **v2 (now)** | installable `voiceagent` command, `src/` package, multi-client, tests + eval, `ARCHITECTURE.md` | `voiceagent ingest` / `voiceagent talk` |
-| **v3 (now, Path A)** | `api.py` (FastAPI) over the same core: `/health`, `/ingest`, `/ask`, `/describe` | `voiceagent-api` → HTTP, any client |
-| v3 Path B | `/ask` composes an answer via Claude (needs Anthropic API key); CI + Dockerfile | HTTP — real answers |
+| **v3 (now)** | `api.py` (FastAPI): `/health`, `/ingest`, `/ask`, `/describe`; `/ask` composes a Claude answer when a key is set (Path B) | `voiceagent-api` → HTTP, any client |
 | v4 | web UI that calls the v3 API — drag-drop a doc, click to talk | click → talk (zero logic in UI) |
+| deploy | CI + Dockerfile | host it |
 
 **Ingestion track — what it knows** (all write to Moss; the agent never changes): PDF/MD/TXT (done)
 → web scrapers → MCP/API connectors → live loops. The impressive/hackathon version = several live

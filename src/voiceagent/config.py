@@ -14,6 +14,15 @@ def client_id() -> str | None:
 
 
 MODEL_ID = os.getenv("MOSS_MODEL_ID", "moss-minilm")
+
+# Anthropic — only for the HTTP API's /ask answer composing (v3 Path B). Cheapest model by default.
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
+
+
+def has_anthropic_key() -> bool:
+    """True once a real key is in place (placeholder 'PENDING' / empty counts as absent)."""
+    key = os.getenv("ANTHROPIC_API_KEY", "")
+    return bool(key) and key != "PENDING"
 CHUNK_WORDS = int(os.getenv("CHUNK_WORDS", "800"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "100"))
 
