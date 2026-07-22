@@ -83,3 +83,33 @@ track** widens *what it knows*. They never touch each other — both meet only a
 
 The demo-impressive / hackathon version = several live ingestion sources feeding one voice agent,
 with the v4 UI on top. None of it requires changing `agent.py`.
+
+### What actually makes it hireable (do these two, then STOP)
+
+The skeleton (v1–v4) is table stakes — a reusable template now. The *signal* to an employer is not
+more layers, it's:
+
+1. **One real integration + one sharp use case.** e.g. Bright Data live-scrapes a real source → Moss,
+   and the agent answers about *live* data. Pick ONE concrete story ("voice agent over a client's
+   live knowledge base"), not ten half-features.
+2. **An evaluation + grading harness.** The impressive part is *measuring* the agent: a test set of
+   question→expected-answer, scored automatically, so you can say "accuracy is X%, and here's how I
+   improved it." `eval.py` is the seed. This is what separates "I wired an API" from "I built and
+   *measured* a system." **This is the differentiator — invest here, not in more UI.**
+
+Diminishing returns (nice, not hireable): more UI polish, more endpoints, more layers.
+
+### Quick UX wins (cheap, worth doing before a demo)
+- **Barge-in / Stop button** — cancel `speechSynthesis` mid-answer (right now you can't shut it up).
+- **Voice picker** — Web Speech `getVoices()` in the UI; `LIVEKIT_TTS_VOICE` for the terminal path.
+- **Which-brain badge** — show "answered by Claude / LiveKit" so it's never ambiguous.
+- **Scale/latency numbers** — time ingestion + retrieval, show docs/sec and ms/query (answers "does it
+  handle thousands of docs?" — Moss holds ~100k; you just haven't *measured* it yet).
+
+### Building faster next time (the leverage that turns 4 days → ~1 hour)
+1. **Spec upfront, then let it run.** State the full goal + definition-of-done in ONE message and let
+   the agent execute end-to-end (plan → build all layers → test), instead of gating every step. Biggest lever.
+2. **Permission allowlist** in `.claude/settings.json` so routine commands don't prompt. (Ask to set up.)
+3. **Reuse this template** — next project starts at v4, not v0.
+4. **Loop engineering** — for iterative refinement: state goal + criteria, let it iterate to the bar.
+5. **Bake the layering into `engineering-kit`** so core→interface→UI is never re-taught per project.
