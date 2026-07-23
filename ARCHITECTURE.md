@@ -121,3 +121,13 @@ Diminishing returns (nice, not hireable): more UI polish, more endpoints, more l
 
 > Standing rule (Emre's day-one hard rule): **adopt proven tools, connect APIs — do NOT build eval
 > harnesses or loop/agent frameworks from scratch.** Building = thin glue over adopted tools.
+
+### Adopt-list (reach for these next time — verify fit before committing)
+- **Voice / domain plumbing:** LiveKit Agents (used here), Pipecat, or Vapi/Retell (managed). Never
+  rebuild STT→LLM→TTS→turn-taking — this project already adopted LiveKit, didn't build it.
+- **Autonomous loop layer:** the `@claude` GitHub Action (spec in an issue → PR), self-hosted OpenHands,
+  or Claude Code `/loop` + Workflow. Don't build orchestration.
+- **Verification pipeline:** a CI/verify runner (e.g. `no-mistakes`) so tests/verify/PR run automatically,
+  not by hand.
+- **Eval / grading:** promptfoo (used here), ragas, or deepeval.
+- **Vector DB:** Moss (used here) or Pinecone / Weaviate / Qdrant — pick ONE.
