@@ -12,7 +12,11 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the layer map.
 - **Retrieval latency: ~2,800 ms → ~3 ms warm (≈900× faster).** Benchmarked with `voiceagent.bench`,
   found the vector index was being reloaded from Moss on every query, fixed it to load once per
   process (`moss_store.py`). Measure → diagnose → fix → re-measure.
-- **Cost:** answers use the cheapest model (`claude-haiku-4-5`) — ~fractions of a cent per question.
+- **Answer accuracy: 10/10 (100%)** on a 10-question eval of a sample handbook — including correctly
+  *declining* an out-of-document question (no hallucination). Measured with **promptfoo** (adopted,
+  not built); config + test set in [`eval/`](eval/).
+- **Cost:** answers use the cheapest model (`claude-haiku-4-5`) — ~fractions of a cent per question;
+  the full eval run costs ~0.2¢.
 
 ## Supported documents
 
@@ -114,13 +118,28 @@ does **not** use this — it has its own LLM via LiveKit. Interactive docs at `/
 
 ## Tests & eval
 
+**Unit tests** (no network):
 ```bash
-python tests/test_chunking.py                              # pure unit tests, no network
-op run --env-file=.env -- python3 -m voiceagent.eval --index docs   # retrieval eval vs known facts
+python tests/test_chunking.py
+python tests/test_api.py
 ```
 
-Extend `EVAL_SET` in `src/voiceagent/eval.py` with your own question/expected pairs, then
-re-run after any prompt or chunking change to catch regressions.
+**Answer-accuracy eval** — adopted [`promptfoo`](https://promptfoo.dev) (not hand-built), scores the
+real `/ask` endpoint against a known document. Cheap: pure text/regex assertions, so the only paid
+calls are the agent's own (~0.2¢/run; promptfoo caches, so re-runs are free unless the agent changes):
+```bash
+npm install -g promptfoo
+op run --env-file=.env -- voiceagent ingest eval/acme_handbook.md --index eval   # once
+op run --env-file=.env -- voiceagent-api                                          # terminal 1
+promptfoo eval -c eval/promptfooconfig.yaml && promptfoo view                      # terminal 2
+```
+Add your own question→expected cases to `eval/promptfooconfig.yaml`, then re-run after any prompt /
+chunking / model change to catch regressions. (`src/voiceagent/eval.py` is a throwaway seed — promptfoo replaces it.)
+
+**Speed benchmark:**
+```bash
+op run --env-file=.env -- python3 -m voiceagent.bench --docs 100 --queries 20
+```
 
 ---
 

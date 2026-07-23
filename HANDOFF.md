@@ -66,6 +66,19 @@ well-integrated. The engineering value is in *how* you call the tools, and you o
 **measuring**. This is a standard, common class of bug (redundant expensive call in a hot path) — most
 hackathon demos never measure, so finding+fixing it is a genuine differentiator, not a nicety.
 
+## Answer-accuracy eval (adopted promptfoo — do NOT build one)
+
+`eval/promptfooconfig.yaml` + `eval/acme_handbook.md` score the real `/ask` endpoint with
+**promptfoo** (industry-standard, `npm install -g promptfoo`). Pure text/regex assertions → only paid
+calls are the agent's own haiku calls (~0.2¢/run; promptfoo caches re-runs). **Result: 10/10 (100%)**,
+including correctly declining an out-of-document question (no hallucination). Run: ingest
+`eval/acme_handbook.md` into an `eval` index, start `voiceagent-api`, then
+`promptfoo eval -c eval/promptfooconfig.yaml`. The `eval` index currently exists (fixture) — safe to
+delete + re-ingest anytime. Lesson learned: the eval harness itself can have bugs (a Python `(?i)`
+regex flag failed in JS-based promptfoo — the agent was right, the test was wrong).
+
+Standing rule: **adopt eval/loop tooling (promptfoo, ragas, LangGraph, Claude Code /loop) — never build from scratch.**
+
 ## Gotchas / facts
 
 - Moss free tier caps at **3 indexes**. Currently used: `slots` (from slot-sniper) + `voice_ai-starter-1l22e`. Leave room, or use one shared index with `--client` metadata filtering.

@@ -1,0 +1,47 @@
+# Answer-accuracy eval for the voice-agent /ask endpoint.
+# ADOPTED tool (promptfoo) — we don't build the harness, we configure it.
+# Pure string/regex assertions -> the ONLY paid calls are the agent's own (haiku). No LLM-judge.
+#
+# Run (server must be up, eval index ingested):
+#   op run --env-file=.env -- voiceagent-api            # terminal 1
+#   npx promptfoo@latest eval -c eval/promptfooconfig.yaml && npx promptfoo@latest view   # terminal 2
+
+description: "voice-agent /ask accuracy — Acme Employee Handbook"
+
+prompts:
+  - "{{question}}"
+
+providers:
+  - id: "http://localhost:8000/ask"
+    config:
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        question: "{{question}}"
+        index: "eval"
+      transformResponse: "json.answer"
+
+tests:
+  - vars: { question: "How many paid vacation days do full-time employees get per year?" }
+    assert: [{ type: icontains, value: "20" }]
+  - vars: { question: "What is the office parking garage code?" }
+    assert: [{ type: icontains, value: "4471" }]
+  - vars: { question: "How many days per week can employees work remotely?" }
+    assert: [{ type: icontains, value: "3" }]
+  - vars: { question: "How long do expense reimbursements take to process?" }
+    assert: [{ type: icontains, value: "30" }]
+  - vars: { question: "How long is the probationary period for new hires?" }
+    assert: [{ type: icontains, value: "90" }]
+  - vars: { question: "How many paid sick days per year?" }
+    assert: [{ type: icontains, value: "10" }]
+  - vars: { question: "What is the HR contact email?" }
+    assert: [{ type: icontains, value: "hr@acme.co" }]
+  - vars: { question: "What is the company 401k match percentage?" }
+    assert: [{ type: icontains, value: "4" }]
+  - vars: { question: "How many days to return a laptop after leaving?" }
+    assert: [{ type: icontains, value: "5" }]
+  # Faithfulness / no-hallucination test: the answer is NOT in the doc, so it must decline.
+  # (regex is evaluated by promptfoo in JS — no Python-style "(?i)" inline flag; answers say "not"/"no information".)
+  - vars: { question: "What is the CEO's annual salary?" }
+    assert: [{ type: regex, value: "not|no information|unable|does not|couldn't find" }]
