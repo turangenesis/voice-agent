@@ -7,6 +7,13 @@ Decoupled by design: **`ingest`** writes to Moss (files now; scrape / MCP / live
 the **agent** only ever reads Moss. Swapping the ingestion source never touches the agent.
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the layer map.
 
+## Results
+
+- **Retrieval latency: ~2,800 ms → ~3 ms warm (≈900× faster).** Benchmarked with `voiceagent.bench`,
+  found the vector index was being reloaded from Moss on every query, fixed it to load once per
+  process (`moss_store.py`). Measure → diagnose → fix → re-measure.
+- **Cost:** answers use the cheapest model (`claude-haiku-4-5`) — ~fractions of a cent per question.
+
 ## Supported documents
 
 `.pdf`, `.md`, `.markdown`, `.txt`. (Scanned/image-only PDFs won't work — no OCR.)
